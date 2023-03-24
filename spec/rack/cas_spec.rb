@@ -36,7 +36,7 @@ describe Rack::CAS do
     end
 
     context 'with an invalid ticket' do
-      before { RackCAS::ServiceValidationResponse.any_instance.stub(:user) { raise RackCAS::ServiceValidationResponse::TicketInvalidError } }
+      before { allow_any_instance_of(RackCAS::ServiceValidationResponse).to receive(:user).and_raise(RackCAS::ServiceValidationResponse::TicketInvalidError) }
       its(:status) { should eql 302 }
       its(:location) { should eql 'http://example.com/cas/login?service=http%3A%2F%2Fexample.org%2Fprivate%3Fsearch%3Dblah' }
     end
@@ -59,8 +59,8 @@ describe Rack::CAS do
   describe 'single sign out request' do
     let(:app_options) {
       session_store = double('session_store')
-      session_store.stub(:destroy_session_by_cas_ticket).and_return 1
-      session_store.should_receive(:destroy_session_by_cas_ticket).with(ticket)
+      allow(session_store).to receive(:destroy_session_by_cas_ticket).and_return(1)
+      expect(session_store).to receive(:destroy_session_by_cas_ticket).with(ticket)
 
       { session_store: session_store }
     }

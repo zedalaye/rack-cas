@@ -19,13 +19,13 @@ describe RackCAS::Server do
     end
 
     context 'with renew = true' do
-      before { RackCAS.config.stub(renew: true) }
+      before { allow(RackCAS.config).to receive(:renew?) { true } }
       subject { server.login_url(service_url) }
       its(:to_s) { should eql 'http://example.com/cas/login?renew=true&service=http%3A%2F%2Fexample.org%2Fwhatever' }
     end
 
     context 'with custom login_url' do
-      before { RackCAS.config.stub(login_url: 'http://example.com/cas/login?hi=bye') }
+      before { allow(RackCAS.config).to receive(:login_url) { 'http://example.com/cas/login?hi=bye' } }
       subject { server.login_url(service_url) }
       its(:to_s) { should eql 'http://example.com/cas/login?hi=bye&service=http%3A%2F%2Fexample.org%2Fwhatever' }
     end
