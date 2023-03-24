@@ -1,6 +1,10 @@
+require 'time'
+
 module RackCAS
   module RedisStore
     class Session
+      ONE_MONTH = 60 * 60 * 24 * 30 # Redis will make sessions to expire after 30 days
+
       @client = nil
 
       def self.client
@@ -16,11 +20,11 @@ module RackCAS
       def self.write(session_id:, data:, cas_ticket: )
         #create a row with the session_id and the data
         #create a row with the cas_ticket acting as a reverse index
-        results = self.client.pipelined do
-          self.client.set("rack_cas_session:#{session_id}",data)
-          self.client.expireat("rack_cas_session:#{session_id}",30.days.from_now.to_i)
-          self.client.set("rack_cas_ticket:#{cas_ticket}","rack_cas_session:#{session_id}")
-          self.client.expireat("rack_cas_ticket:#{cas_ticket}",30.days.from_now.to_i)
+        results = self.client.multi do |pipeline|
+          pipeline.set("rack_cas_session:#{session_id}", data)
+          pipeline.expireat("rack_cas_session:#{session_id}", (Time.now + ONE_MONTH).to_i)
+          pipeline.set("rack_cas_ticket:#{cas_ticket}", "rack_cas_session:#{session_id}")
+          pipeline.expireat("rack_cas_ticket:#{cas_ticket}", (Time.now + ONE_MONTH).to_i)
         end
 
         results == ["OK",true,"OK",true] ? session_id : false
@@ -28,9 +32,9 @@ module RackCAS
 
       def self.destroy_by_cas_ticket(cas_ticket)
         session_id = self.client.get("rack_cas_ticket:#{cas_ticket}")
-        results = self.client.pipelined do
-          self.client.del("rack_cas_ticket:#{cas_ticket}")
-          self.client.del(session_id)
+        results = self.client.multi do |pipeline|
+          pipeline.del("rack_cas_ticket:#{cas_ticket}")
+          pipeline.del(session_id)
         end
         return results[1]
       end
